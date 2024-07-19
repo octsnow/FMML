@@ -16,6 +16,7 @@ namespace{
         Scale,
         OctavePos,
         OctaveNeg,
+        Volum,
         Note,
         NoteTms,
         ChordEnd,
@@ -47,6 +48,13 @@ namespace{
     bool isNum(char c){
         return int('0') <= int(c) && int(c) <= int('9');
     }
+
+    int calcFrequency(MusicalScale ms) {
+        int f = AF * pow(2, ms.s / 12.0) * ms.octave;
+
+        return f;
+    }
+
     bool checkCommand(string str, string command, bool* forMatch){
         int minLen = str.length() < command.length() ? str.length() : command.length();
         if(str.substr(0, minLen) == command.substr(0, minLen)){
@@ -61,6 +69,8 @@ namespace{
     }
 
     void genSqWave(int length, char maxAmp, vector<MusicalScale> msList, FILE* fp, int sampleRate){
+        static int msLastCounts[12] = { 0 };
+
         for(int i = 0; i < length; i++){
             char c;
             int tmp;
@@ -68,14 +78,20 @@ namespace{
 
             for(MusicalScale ms : msList){
                 if(ms.s != R){
-                    int f = AF * pow(2, ms.s / 12.0) * ms.octave;
-                    v += (i * f / sampleRate) & 1;
+                    int f = calcFrequency(ms);
+                    v += ((i + msLastCounts[ms.s - 3]) * f / sampleRate) & 1;
                 }
             }
             v = v / msList.size() * 2;
             tmp = v * maxAmp * msList.size();
             c = tmp > 0xFF ? 0xFF : (tmp < 0x00 ? 0x00 : tmp);
             fwrite(&c, 1, 1, fp);
+        }
+
+        memset(msLastCounts, 0, sizeof(msLastCounts));
+
+        for(MusicalScale ms : msList) {
+            msLastCounts[ms.s - 3] = length % (sampleRate / calcFrequency(ms));
         }
     }
 
@@ -131,9 +147,11 @@ int FMMLCompiler::compile(string filename, FILE* fp){
     float octave = 1;
     float note = 4;
     float fraction = 0;
+    float volum = 1.0;
     bool isChord = false;
     bool isSigned = false;
     bool isNoise = false;
+    int adpDigit = 0;
     vector<MusicalScale> chordList;
     MusicalScale msBuf;
     string cBuf;
@@ -199,6 +217,10 @@ int FMMLCompiler::compile(string filename, FILE* fp){
                     octave = 0;
                     cBuf = cBuf.substr(1);
                     readMode = OctaveNeg;
+                }else if(cBuf[0] == 'v'){
+                    volum = 0.0;
+                    cBuf = cBuf.substr(1);
+                    readMode = Volum;
                 }else if(cBuf[0] == 'n'){
                     noteTimes = 1;
                     note = 0;
@@ -249,10 +271,12 @@ int FMMLCompiler::compile(string filename, FILE* fp){
                     int sndSize = fullSize * sndRatio;
                     fraction = fullSizeF - fullSize;
                     if(isNoise){
-                        genNoiseWave(sndSize, this->mMaxAmp, {msBuf}, fp, this->mSampleRate);
+                        genNoiseWave(sndSize, this->mMaxAmp * volum, {msBuf}, fp, this->mSampleRate);
+                        volum = 1.0;
                         isNoise = false;
                     }else{
-                        genSqWave(sndSize, this->mMaxAmp, {msBuf}, fp, this->mSampleRate);
+                        genSqWave(sndSize, this->mMaxAmp * volum, {msBuf}, fp, this->mSampleRate);
+                        volum = 1.0;
                     }
                     for(int i = 0; i < fullSize - sndSize; i++){
                         char c = 0;
@@ -287,6 +311,28 @@ int FMMLCompiler::compile(string filename, FILE* fp){
                     readMode = Normal;
                 }
             }break;
+            case Volum:{
+                if(isNum(cBuf[0])){
+                    if(adpDigit > 0) {
+                        adpDigit++;
+                    }
+                    volum = (volum * 10) + int(cBuf[0]) - int('0');
+                    cBuf = cBuf.substr(1);
+                }else if(cBuf[0] == '.'){
+                    if(adpDigit > 0) {
+                        cerr << cBuf[0] << endl;
+                        return -1;
+                    }
+                    adpDigit++;
+                    cBuf = cBuf.substr(1);
+                }else{
+                    for(int i = 0; i < adpDigit - 1; i++) {
+                        volum /= 10;
+                    }
+                    adpDigit = 0;
+                    readMode = Normal;
+                }
+            }break;
             case Note:{
                 if(isNum(cBuf[0])){
                     note = (note * 10) + int(cBuf[0]) - int('0');
@@ -309,9 +355,23 @@ int FMMLCompiler::compile(string filename, FILE* fp){
             }break;
             case Tempo:{
                 if(isNum(cBuf[0])){
+                    if(adpDigit > 0) {
+                        adpDigit++;
+                    }
                     this->mBpm = (this->mBpm * 10) + int(cBuf[0]) - int('0');
                     cBuf = cBuf.substr(1);
+                }else if(cBuf[0] == '.'){
+                    if(adpDigit > 0) {
+                        cerr << cBuf[0] << endl;
+                        return -1;
+                    }
+                    adpDigit++;
+                    cBuf = cBuf.substr(1);
                 }else{
+                    for(int i = 0; i < adpDigit - 1; i++) {
+                        this->mBpm /= 10;
+                    }
+                    adpDigit = 0;
                     readMode = Normal;
                 }
             }break;
@@ -330,12 +390,13 @@ int FMMLCompiler::compile(string filename, FILE* fp){
                 int fullSize = (int)fullSizeF;
                 int sndSize = fullSize * sndRatio;
                 fraction = fullSizeF - fullSize;
-                genSqWave(sndSize, this->mMaxAmp, chordList, fp, this->mSampleRate);
+                genSqWave(sndSize, this->mMaxAmp * volum, chordList, fp, this->mSampleRate);
                 for(int i = 0; i < fullSize - sndSize; i++){
                     char c = 0;
                     fwrite(&c, 1, 1, fp);
                 }
                 octave = 1;
+                volum = 1.0;
                 chordList.clear();
                 readMode = Normal;
             }break;
@@ -357,7 +418,7 @@ int FMMLCompiler::compile(string filename, FILE* fp){
             }
         }
     }
-    cout << cBuf << endl;
+    ifs.close();
 
     return 0;
 }

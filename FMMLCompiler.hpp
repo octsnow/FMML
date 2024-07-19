@@ -15,5 +15,5 @@ public:
 private:
     const int mMaxAmp = 0x10;
     int mSampleRate;
-    int mBpm;
+    float mBpm;
 };
