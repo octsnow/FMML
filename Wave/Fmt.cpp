@@ -14,6 +14,9 @@ void Fmt::setFmtData(FmtData& fmtData){
     case FMT_CKSIZE_40:
         this->mCkSize = 40;
         break;
+    default:
+        std::cerr << "unknown size" << std::endl;
+        break;
     }
     this->AllocDataSize();
 

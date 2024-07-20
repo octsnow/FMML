@@ -17,7 +17,8 @@ int main(int argc, char** argv){
     Wave wav;
     FMMLCompiler comp(SAMPLE_RATE);
     FmtData fmtData;
-    FILE* tfp = tmpfile();
+    FILE* tfp;
+    tmpfile_s(&tfp);
 
     fmtData.ckSize = FMT_CKSIZE_16;
     fmtData.wFormatTag = WAVE_FORMAT_PCM;
