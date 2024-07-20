@@ -17,8 +17,13 @@ int main(int argc, char** argv){
     Wave wav;
     FMMLCompiler comp(SAMPLE_RATE);
     FmtData fmtData;
-    FILE* tfp;
-    tmpfile_s(&tfp);
+    FILE* tpf = NULL;
+    errno_t e = tmpfile_s(&tpf);
+
+    if(e != 0) {
+        cerr << "error code (" << e << "): failed to create temp file" << endl;
+        return -1;
+    }
 
     fmtData.ckSize = FMT_CKSIZE_16;
     fmtData.wFormatTag = WAVE_FORMAT_PCM;
@@ -28,12 +33,12 @@ int main(int argc, char** argv){
     fmtData.nBlockAlign = 1;
     fmtData.wBitsPerSample = 8;
 
-    comp.compile(argv[1], tfp);
+    comp.compile(argv[1], tpf);
 
     wav.setFmtData(fmtData);
-    wav.writeWaveDataFile("out.wav", tfp);
+    wav.writeWaveDataFile("out.wav", tpf);
 
-    fclose(tfp);
+    fclose(tpf);
     
     return 0;
 }

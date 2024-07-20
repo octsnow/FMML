@@ -6,14 +6,14 @@
 class FMMLCompiler{
 public:
     FMMLCompiler(int sampleRate)
-    : mSampleRate(sampleRate)
-    , mBpm(120){}
+    : m_sample_rate(sampleRate)
+    , m_bpm(120){}
 
     double getTimePerBeat();
     int getBlockSize();
     int compile(std::string filename, FILE* fp);
 private:
-    const int mMaxAmp = 0x10;
-    int mSampleRate;
-    float mBpm;
+    const int m_max_amp = 0x10;
+    int m_sample_rate;
+    float m_bpm;
 };
