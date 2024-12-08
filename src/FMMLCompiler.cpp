@@ -1,10 +1,10 @@
 #include "FMMLCompiler.hpp"
+#include "Wave.hpp"
 #include <iostream>
 #include <fstream>
 #include <cstring>
 #include <cmath>
 #include <ctime>
-#include <random>
 
 using namespace std;
 
@@ -424,7 +424,16 @@ int FMMLCompiler::getBlockSize(){
     return this->m_sample_rate * this->getTimePerBeat();
 }
 
-int FMMLCompiler::compile(string filename, FILE* fp){
+int FMMLCompiler::compile(string filename){
+    FILE* fp = NULL;
+    errno_t e;
+
+    e = fopen_s(&fp, ".tmp", "w+b");
+    if(e != 0 || fp == NULL) {
+        cerr << "error code (" << e << "): failed to create temporary file" << endl;
+        return -1;
+    }
+
     ifstream ifs(filename);
     ReadingStatus status;
 
@@ -486,6 +495,22 @@ int FMMLCompiler::compile(string filename, FILE* fp){
         }
     }
     ifs.close();
+
+    Wave wav;
+    FmtData fmtData;
+
+    fmtData.ckSize = FMT_CKSIZE_16;
+    fmtData.wFormatTag = WAVE_FORMAT_PCM;
+    fmtData.nChannels = 1;
+    fmtData.nSamplesPerSec = this->m_sample_rate;
+    fmtData.nAvgBytesPerSec = this->m_sample_rate;
+    fmtData.nBlockAlign = 1;
+    fmtData.wBitsPerSample = 8;
+    wav.setFmtData(fmtData);
+    wav.writeWaveDataFile("out.wav", fp);
+
+    fclose(fp);
+    remove(".tmp");
 
     return 0;
 }

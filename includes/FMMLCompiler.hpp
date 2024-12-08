@@ -11,7 +11,7 @@ public:
 
     double getTimePerBeat();
     int getBlockSize();
-    int compile(std::string filename, FILE* fp);
+    int compile(std::string filename);
 private:
     const int m_max_amp = 0x10;
     int m_sample_rate;

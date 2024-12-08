@@ -1,0 +1,11 @@
+t82
+
+n1 r
+
+n4 d e
+n8 (fc-1a) e c -1a n4 (d-1a-1f)~ n8 (d-1a-1f)~ d
+n8 (c-1e) -1a -1f -1g n4 -1a -1g
+n8 -1e -1f -1a c n4 (e-1b-1f) f
+n4 (-1f-1#ac)~ n8 (-1f-1#ac -1d)~ (-1f-1#ac -1f)~ n4 (-1f-1#ac -1e)~
+
+n1 r
